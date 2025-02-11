@@ -162,6 +162,9 @@ M.convert = function()
 		table.insert(text, 1, '')
 		vim.api.nvim_buf_set_lines(0, count, count, false, text)
 	end
+
+	P._objs = {}
+	P._count = 1
 end
 
 return M
