@@ -47,7 +47,8 @@ local set_range_text = function(start_row, start_col, end_row, end_col, text)
 end
 
 ---@param node TSNode
-local get_array_type = function(node)
+M._get_array_type = function(node)
+	---@type string[]
 	local types = {}
 
 	for _, child in pairs(node:named_children()) do
@@ -59,25 +60,49 @@ local get_array_type = function(node)
 			or type == 'true'
 			or type == 'false'
 		then
-			table.insert(types, type)
+			table.insert(
+				types,
+				(type == 'true' or type == 'false') and 'boolean' or type
+			)
+		end
+
+		if type == 'array' then
+			local array_type = M._get_array_type(child)
+			table.insert(types, array_type .. '[]')
+		end
+
+		if type == 'object' then
+			local obj_str = vim.treesitter.get_node_text(child, 0)
+			local tree = vim.treesitter.get_string_parser(obj_str, 'typescript'):parse()
+			print(vim.inspect(tree));
 		end
 	end
 
-	if #types == 0 then
+	local hash = {}
+	local unique_items = {}
+
+	for _, v in ipairs(types) do
+		if not hash[v] then
+			table.insert(unique_items, v)
+			hash[v] = true
+		end
+	end
+
+	if #unique_items == 0 then
 		return 'unknown'
 	end
 
-	if #types == 1 then
-		return types[1]
+	if #unique_items == 1 then
+		return unique_items[1]
 	end
 
-	local types_str = table.concat(types, ' | ')
+	local types_str = table.concat(unique_items, ' | ')
 	return '(' .. types_str .. ')'
 end
 
 ---@param obj TSNode
-local function parse_obj(obj)
-	for i, child in pairs(obj:named_children()) do
+M._parse_obj = function(obj)
+	for _, child in pairs(obj:named_children()) do
 		if child:type() ~= 'pair' then
 			return
 		end
@@ -108,11 +133,11 @@ local function parse_obj(obj)
 			set_node_text(first_node, type)
 		else
 			if type == 'array' then
-				local array_type = get_array_type(first_node)
+				local array_type = M._get_array_type(first_node)
 				set_node_text(first_node, array_type .. '[]')
 			end
 			if type == 'object' then
-				parse_obj(first_node)
+				M._parse_obj(first_node)
 			end
 		end
 	end
@@ -151,7 +176,7 @@ M.convert = function()
 		_, _, end_row, end_col = name:range()
 	end
 
-	parse_obj(obj)
+	M._parse_obj(obj)
 	set_range_text(
 		start_row,
 		start_col,
