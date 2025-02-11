@@ -1,0 +1,4 @@
+quote_style = "ForceSingle"
+indent_type = "Tabs"
+indent_width = 2
+column_width = 80
