@@ -20,7 +20,7 @@ You can install json-to-ts.nvim using your favorite plugin manager.
 ### Using Lazy
 
 ```lua
-use {
+return {
   'ask-786/json-to-ts.nvim',
   config = function()
     local json_to_ts = require('json-to-ts')
