@@ -19,131 +19,160 @@ local function is_cursor_in_node_type(target_type)
 	return target
 end
 
----comment
+--- Sets the text of a given node.
 ---@param node TSNode
 ---@param text string
-local set_node_text = function(node, text)
+local function set_node_text(node, text)
 	local start_row, start_col, end_row, end_col = node:range()
-
 	if not start_row or not start_col or not end_row or not end_col then
 		return
 	end
-
 	vim.api.nvim_buf_set_text(0, start_row, start_col, end_row, end_col, { text })
 end
 
----comment
+--- Sets the text in the given buffer range.
 ---@param start_row number
 ---@param start_col number
 ---@param end_row number
 ---@param end_col number
 ---@param text string
-local set_range_text = function(start_row, start_col, end_row, end_col, text)
+local function set_range_text(start_row, start_col, end_row, end_col, text)
 	if not start_row or not start_col or not end_row or not end_col then
 		return
 	end
-
 	vim.api.nvim_buf_set_text(0, start_row, start_col, end_row, end_col, { text })
 end
 
+--- Recursively builds a type string for an object node.
+---@param obj TSNode
+---@return string
+M._get_object_type = function(obj)
+	local fields = {}
+	-- Iterate over each named child (typically the 'pair's)
+	for _, child in ipairs(obj:named_children()) do
+		if child:type() == 'pair' then
+			-- Get the key node and its text.
+			local key_node = child:field('key')[1]
+			local key_text = vim.treesitter.get_node_text(key_node, 0)
+
+			-- Get the value node.
+			local value_nodes = child:field('value')
+			if value_nodes and value_nodes[1] then
+				local value_node = value_nodes[1]
+				local value_type = value_node:type()
+				local type_str = ''
+
+				if
+					value_type == 'string'
+					or value_type == 'number'
+					or value_type == 'true'
+					or value_type == 'false'
+				then
+					type_str = (value_type == 'true' or value_type == 'false')
+							and 'boolean'
+						or value_type
+				elseif value_type == 'array' then
+					type_str = M._get_array_type(value_node) .. '[]'
+				elseif value_type == 'object' then
+					type_str = M._get_object_type(value_node)
+				else
+					type_str = 'unknown'
+				end
+
+				table.insert(fields, key_text .. ': ' .. type_str)
+			end
+		end
+	end
+	return '{ ' .. table.concat(fields, ', ') .. ' }'
+end
+
+--- Recursively determines the type of elements inside an array node.
 ---@param node TSNode
+---@return string
 M._get_array_type = function(node)
 	---@type string[]
 	local types = {}
 
-	for _, child in pairs(node:named_children()) do
-		local type = child:type()
+	for _, child in ipairs(node:named_children()) do
+		local child_type = child:type()
 
 		if
-			type == 'string'
-			or type == 'number'
-			or type == 'true'
-			or type == 'false'
+			child_type == 'string'
+			or child_type == 'number'
+			or child_type == 'true'
+			or child_type == 'false'
 		then
 			table.insert(
 				types,
-				(type == 'true' or type == 'false') and 'boolean' or type
+				(child_type == 'true' or child_type == 'false') and 'boolean'
+					or child_type
 			)
-		end
-
-		if type == 'array' then
+		elseif child_type == 'array' then
 			local array_type = M._get_array_type(child)
 			table.insert(types, array_type .. '[]')
-		end
-
-		if type == 'object' then
-			local obj_str = vim.treesitter.get_node_text(child, 0)
-			local tree = vim.treesitter.get_string_parser(obj_str, 'typescript'):parse()
-			print(vim.inspect(tree));
+		elseif child_type == 'object' then
+			local object_type = M._get_object_type(child)
+			table.insert(types, object_type)
 		end
 	end
 
-	local hash = {}
-	local unique_items = {}
-
+	local unique = {}
 	for _, v in ipairs(types) do
-		if not hash[v] then
-			table.insert(unique_items, v)
-			hash[v] = true
-		end
+		unique[v] = true
+	end
+
+	local unique_items = {}
+	for k in pairs(unique) do
+		table.insert(unique_items, k)
 	end
 
 	if #unique_items == 0 then
 		return 'unknown'
-	end
-
-	if #unique_items == 1 then
+	elseif #unique_items == 1 then
 		return unique_items[1]
+	else
+		return '(' .. table.concat(unique_items, ' | ') .. ')'
 	end
-
-	local types_str = table.concat(unique_items, ' | ')
-	return '(' .. types_str .. ')'
 end
 
+--- Recursively parses an object node and sets the text of its primitive value nodes.
 ---@param obj TSNode
 M._parse_obj = function(obj)
-	for _, child in pairs(obj:named_children()) do
+	for _, child in ipairs(obj:named_children()) do
 		if child:type() ~= 'pair' then
 			return
 		end
 
-		local value_node = child:field('value')
-
-		if not value_node then
+		local value_nodes = child:field('value')
+		if not value_nodes or not value_nodes[1] then
 			return
 		end
 
-		local first_node = value_node[1]
-
-		if not first_node then
-			return
-		end
-
-		local type = first_node:type()
+		local first_node = value_nodes[1]
+		local value_type = first_node:type()
 
 		if
-			type == 'string'
-			or type == 'number'
-			or type == 'true'
-			or type == 'false'
+			value_type == 'string'
+			or value_type == 'number'
+			or value_type == 'true'
+			or value_type == 'false'
 		then
-			if type == 'true' or type == 'false' then
-				type = 'boolean'
-			end
-			set_node_text(first_node, type)
-		else
-			if type == 'array' then
-				local array_type = M._get_array_type(first_node)
-				set_node_text(first_node, array_type .. '[]')
-			end
-			if type == 'object' then
-				M._parse_obj(first_node)
-			end
+			local new_type = (value_type == 'true' or value_type == 'false')
+					and 'boolean'
+				or value_type
+			set_node_text(first_node, new_type)
+		elseif value_type == 'array' then
+			local array_type = M._get_array_type(first_node)
+			set_node_text(first_node, array_type .. '[]')
+		elseif value_type == 'object' then
+			M._parse_obj(first_node)
 		end
 	end
 end
 
+--- Simple helper to capitalize a string.
 ---@param str string
+---@return string
 local function capitalize(str)
 	return (str:gsub('^%l', string.upper))
 end
@@ -155,7 +184,6 @@ M.convert = function()
 	end
 
 	local obj = is_cursor_in_node_type('object')
-
 	if not obj then
 		vim.notify('Place your cursor inside an object', vim.log.levels.WARN)
 		return
