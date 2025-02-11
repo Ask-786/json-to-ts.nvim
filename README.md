@@ -29,8 +29,6 @@ return {
 }
 ```
 
-After installing, restart Neovim and ensure the plugin is loaded.
-
 ## Usage
 
 1. **Open a TypeScript File:**
@@ -51,32 +49,32 @@ After installing, restart Neovim and ensure the plugin is loaded.
 Given the following JSON object in a TypeScript file:
 
 ```typescript
-{
-  "name": "John",
-  "age": 30,
-  "isActive": true,
-  "roles": ["admin", "editor"],
-  "address": {
-    "street": "123 Main St",
-    "city": "Anytown"
-  }
-}
+export const data = {
+  name: "John",
+  age: 30,
+  isActive: true,
+  roles: ["admin", "editor"],
+  address: {
+    street: "123 Main St",
+    city: "Anytown",
+  },
+};
 ```
 
 Running `:lua require('json-to-ts').convert()` will generate type definitions similar to:
 
 ```typescript
+export type Address = {
+  street: string;
+  city: string;
+};
+
 export type Root = {
   name: string;
   age: number;
   isActive: boolean;
   roles: string[];
   address: Address;
-};
-
-export type Address = {
-  street: string;
-  city: string;
 };
 ```
 
