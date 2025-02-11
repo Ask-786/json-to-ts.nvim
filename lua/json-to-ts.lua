@@ -1,7 +1,8 @@
 local M = {}
+local P = {}
 
-M.objs = {}
-M.count = 1
+P._objs = {}
+P._count = 1
 
 --- Simple helper to capitalize a string.
 ---@param str string
@@ -33,7 +34,7 @@ end
 ---@param obj TSNode
 ---@param name string
 ---@return string, string
-M._get_object_type = function(obj, name)
+P._get_object_type = function(obj, name)
 	local fields = {}
 	-- Iterate over each named child (typically the 'pair's)
 	for _, child in ipairs(obj:named_children()) do
@@ -58,11 +59,11 @@ M._get_object_type = function(obj, name)
 							and 'boolean'
 						or value_type
 				elseif value_type == 'array' then
-					type_str = M._get_array_type(value_node, key_text) .. '[]'
+					type_str = P._get_array_type(value_node, key_text) .. '[]'
 				elseif value_type == 'object' then
-					local name_str, obj_str = M._get_object_type(value_node, key_text)
+					local name_str, obj_str = P._get_object_type(value_node, key_text)
 					type_str = name_str
-					table.insert(M.objs, obj_str)
+					table.insert(P._objs, obj_str)
 				else
 					type_str = 'unknown'
 				end
@@ -82,7 +83,7 @@ end
 ---@param node TSNode
 ---@param array_name string
 ---@return string
-M._get_array_type = function(node, array_name)
+P._get_array_type = function(node, array_name)
 	---@type string[]
 	local types = {}
 
@@ -101,12 +102,12 @@ M._get_array_type = function(node, array_name)
 					or child_type
 			)
 		elseif child_type == 'array' then
-			local array_type = M._get_array_type(child, 'UnknownType' .. M.count)
-			M.count = M.count + 1
+			local array_type = P._get_array_type(child, 'UnknownType' .. P._count)
+			P._count = P._count + 1
 			table.insert(types, array_type .. '[]')
 		elseif child_type == 'object' then
-			local name_str, obj_str = M._get_object_type(child, array_name)
-			table.insert(M.objs, obj_str)
+			local name_str, obj_str = P._get_object_type(child, array_name)
+			table.insert(P._objs, obj_str)
 			table.insert(types, name_str)
 		end
 	end
@@ -142,11 +143,11 @@ M.convert = function()
 		return
 	end
 
-	local _, obj_str = M._get_object_type(obj, 'root')
-	table.insert(M.objs, obj_str)
+	local _, obj_str = P._get_object_type(obj, 'root')
+	table.insert(P._objs, obj_str)
 
 	local unique = {}
-	for _, v in ipairs(M.objs) do
+	for _, v in ipairs(P._objs) do
 		unique[v] = true
 	end
 
