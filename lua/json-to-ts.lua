@@ -2,7 +2,6 @@ local M = {}
 local P = {}
 
 P._objs = {}
-P._count = 1
 
 --- Simple helper to capitalize a string.
 ---@param str string
@@ -86,6 +85,7 @@ end
 P._get_array_type = function(node, array_name)
 	---@type string[]
 	local types = {}
+	local count = 1
 
 	for _, child in ipairs(node:named_children()) do
 		local child_type = child:type()
@@ -102,11 +102,11 @@ P._get_array_type = function(node, array_name)
 					or child_type
 			)
 		elseif child_type == 'array' then
-			local array_type = P._get_array_type(child, 'UnknownType' .. P._count)
-			P._count = P._count + 1
+			local array_type = P._get_array_type(child, 'UnknownType')
 			table.insert(types, array_type .. '[]')
 		elseif child_type == 'object' then
-			local name_str, obj_str = P._get_object_type(child, array_name)
+			local name_str, obj_str = P._get_object_type(child, array_name .. count)
+			count = count + 1
 			table.insert(P._objs, obj_str)
 			table.insert(types, name_str)
 		end
@@ -164,7 +164,6 @@ M.convert = function()
 	end
 
 	P._objs = {}
-	P._count = 1
 end
 
 return M
