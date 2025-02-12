@@ -85,7 +85,7 @@ end
 P._get_array_type = function(node, array_name)
 	---@type string[]
 	local types = {}
-	local count = 1
+	local count = 0
 
 	for _, child in ipairs(node:named_children()) do
 		local child_type = child:type()
@@ -105,7 +105,8 @@ P._get_array_type = function(node, array_name)
 			local array_type = P._get_array_type(child, 'UnknownType')
 			table.insert(types, array_type .. '[]')
 		elseif child_type == 'object' then
-			local name_str, obj_str = P._get_object_type(child, array_name .. count)
+			local name_str, obj_str =
+				P._get_object_type(child, array_name .. (count == 0 and '' or count))
 			count = count + 1
 			table.insert(P._objs, obj_str)
 			table.insert(types, name_str)
@@ -132,7 +133,9 @@ P._get_array_type = function(node, array_name)
 end
 
 M.convert = function()
-	if vim.bo.filetype ~= 'typescript' then
+	if
+		vim.bo.filetype ~= 'typescript' and vim.bo.filetype ~= 'typescriptreact'
+	then
 		vim.notify('This only works in typescript files', vim.log.levels.WARN)
 		return
 	end

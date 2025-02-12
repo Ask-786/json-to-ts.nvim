@@ -24,7 +24,7 @@ return {
   'ask-786/json-to-ts.nvim',
   config = function()
     local json_to_ts = require('json-to-ts')
-	vim.keymap.set('n', '<leader>jt', json_to_ts.convert, { desc = 'Convert JSON to TS' })
+    vim.keymap.set('n', '<leader>jt', json_to_ts.convert, { desc = 'Convert JSON to TS' })
   end,
 }
 ```
