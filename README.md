@@ -1,10 +1,10 @@
 # json-to-ts.nvim
 
-json-to-ts.nvim is a Neovim plugin that automatically converts JSON-like objects into TypeScript type definitions. It leverages Treesitter to parse JSON objects within your TypeScript files and recursively generates type definitions—helping you quickly and accurately create types from existing JSON data.
+json-to-ts.nvim is a Neovim plugin that automatically converts TypeScript object expressions into TypeScript type definitions. It leverages Treesitter to parse object expressions within your TypeScript files and recursively generates type definitions—helping you quickly and accurately create types from existing object structures.
 
 ## Features
 
-- **Automatic Type Generation:** Scans the JSON object where your cursor is placed and converts it into a TypeScript type.
+- **Automatic Type Generation:** Scans the TypeScript object expression where your cursor is placed and converts it into a TypeScript type.
 - **Recursive Parsing:** Handles nested objects and arrays, creating separate type definitions for nested structures.
 - **Seamless Integration:** Works directly within your TypeScript files (requires filetype `typescript`).
 
@@ -24,7 +24,7 @@ return {
   'ask-786/json-to-ts.nvim',
   config = function()
     local json_to_ts = require('json-to-ts')
-    vim.keymap.set('n', '<leader>jt', json_to_ts.convert, { desc = 'Convert JSON to TS' })
+    vim.keymap.set('n', '<leader>jt', json_to_ts.generate, { desc = 'Convert Object to TS Type' })
   end,
 }
 ```
@@ -32,21 +32,21 @@ return {
 ## Usage
 
 1. **Open a TypeScript File:**
-   Make sure the filetype is set to `typescript`.
+   Make sure the filetype is set to `typescript` or `typescriptreact`.
 
 2. **Place Your Cursor:**
-   Position your cursor inside a JSON object in the file.
+   Position your cursor inside a TypeScript object expression in the file.
 
 3. **Run the Conversion Command:**
    Execute the following command:
    ```vim
-   :lua require('json-to-ts').convert()
+   :lua require('json-to-ts').generate()
    ```
-   The plugin checks that you are in a TypeScript file and that the cursor is within an object. It then generates the corresponding TypeScript type definitions and appends them at the end of your file.
+   The plugin checks that you are in a TypeScript file and that the cursor is within an object expression. It then generates the corresponding TypeScript type definitions and appends them at the end of your file.
 
 ## Example
 
-Given the following JSON object in a TypeScript file:
+Given the following TypeScript object expression in a TypeScript file:
 
 ```typescript
 export const data = {
@@ -61,7 +61,7 @@ export const data = {
 };
 ```
 
-Running `:lua require('json-to-ts').convert()` will generate type definitions similar to:
+Running `:lua require('json-to-ts').generate()` will generate type definitions similar to:
 
 ```typescript
 export type Address = {

@@ -132,7 +132,7 @@ P._get_array_type = function(node, array_name)
 	end
 end
 
-M.convert = function()
+M.generate = function()
 	if
 		vim.bo.filetype ~= 'typescript' and vim.bo.filetype ~= 'typescriptreact'
 	then
@@ -154,12 +154,7 @@ M.convert = function()
 		unique[v] = true
 	end
 
-	local unique_items = {}
-	for k in pairs(unique) do
-		table.insert(unique_items, k)
-	end
-
-	for _, type in ipairs(unique_items) do
+	for type in pairs(unique) do
 		local count = vim.api.nvim_buf_line_count(0)
 		local text = vim.split(type, '\n', { trimempty = true })
 		table.insert(text, 1, '')
