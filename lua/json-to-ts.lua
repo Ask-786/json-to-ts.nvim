@@ -3,11 +3,22 @@ local P = {}
 
 P._objs = {}
 
---- Simple helper to capitalize a string.
----@param str string
----@return string
-local function capitalize(str)
-	return (str:gsub('^%l', string.upper))
+local function snake_to_upper_camel(snake_str)
+	-- Split the string by underscores
+	local parts = {}
+	for part in string.gmatch(snake_str, '[^_]+') do
+		table.insert(parts, part)
+	end
+
+	-- Capitalize the first letter of each part and concatenate
+	local camel_str = ''
+	for _, part in ipairs(parts) do
+		camel_str = camel_str
+			.. string.upper(string.sub(part, 1, 1))
+			.. string.sub(part, 2)
+	end
+
+	return camel_str
 end
 
 ---@param target_type string
@@ -62,7 +73,7 @@ P._get_object_type = function(obj, name)
 				elseif value_type == 'object' then
 					local name_str, obj_str = P._get_object_type(value_node, key_text)
 					type_str = name_str
-					table.insert(P._objs, obj_str)
+					table.insert(P._objs, 'export type ' .. name_str .. ' = ' .. obj_str)
 				else
 					type_str = 'unknown'
 				end
@@ -71,11 +82,8 @@ P._get_object_type = function(obj, name)
 			end
 		end
 	end
-	return capitalize(name),
-		'export type ' .. capitalize(name) .. ' = {\n  ' .. table.concat(
-			fields,
-			';\n  '
-		) .. '\n}'
+	return snake_to_upper_camel(name),
+		'{\n  ' .. table.concat(fields, ';\n  ') .. '\n}'
 end
 
 --- Recursively determines the type of elements inside an array node.
@@ -83,7 +91,7 @@ end
 ---@param array_name string
 ---@return string
 P._get_array_type = function(node, array_name)
-	---@type string[]
+	---@type {name: string, type: string | nil}[]
 	local types = {}
 	local count = 0
 
@@ -96,31 +104,40 @@ P._get_array_type = function(node, array_name)
 			or child_type == 'true'
 			or child_type == 'false'
 		then
-			table.insert(
-				types,
-				(child_type == 'true' or child_type == 'false') and 'boolean'
-					or child_type
-			)
+			table.insert(types, 1, {
+				name = (child_type == 'true' or child_type == 'false') and 'boolean'
+					or child_type,
+			})
 		elseif child_type == 'array' then
 			local array_type = P._get_array_type(child, 'UnknownType')
-			table.insert(types, array_type .. '[]')
+			table.insert(types, 1, { name = array_type .. '[]' })
 		elseif child_type == 'object' then
 			local name_str, obj_str =
 				P._get_object_type(child, array_name .. (count == 0 and '' or count))
 			count = count + 1
-			table.insert(P._objs, obj_str)
-			table.insert(types, name_str)
+			table.insert(types, 1, { name = name_str, type = obj_str })
 		end
 	end
 
+	---@type table<string,  string | boolean>
 	local unique = {}
 	for _, v in ipairs(types) do
-		unique[v] = true
+		if v.type then
+			unique[v.type] = v.name
+		else
+			unique[v.name] = true
+		end
 	end
 
+	---@type string[];
 	local unique_items = {}
-	for k in pairs(unique) do
-		table.insert(unique_items, k)
+	for type, name in pairs(unique) do
+		if _G.type(name) == 'string' then
+			table.insert(unique_items, name)
+			table.insert(P._objs, 'export type ' .. name .. ' = ' .. type)
+		else
+			table.insert(unique_items, type)
+		end
 	end
 
 	if #unique_items == 0 then
@@ -146,8 +163,8 @@ M.generate = function()
 		return
 	end
 
-	local _, obj_str = P._get_object_type(obj, 'root')
-	table.insert(P._objs, obj_str)
+	local obj_name, obj_str = P._get_object_type(obj, 'root')
+	table.insert(P._objs, 'export type ' .. obj_name .. ' = ' .. obj_str)
 
 	local unique = {}
 	for _, v in ipairs(P._objs) do
